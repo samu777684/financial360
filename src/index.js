@@ -1,11 +1,17 @@
-const app = require('./app');
-const open = require('open').default; // ✅ Importación correcta
+require('dotenv').config();
 
-const PORT = 3001;
+const app = require('./app');
+const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`✅ Servidor escuchando en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 
-  // ✅ Abre el navegador automáticamente
-  open(`http://localhost:${PORT}`);
+  // Solo abre el navegador en tu PC local (nunca en el servidor)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      require('open')(`http://localhost:${PORT}`);
+    } catch (e) {
+      // Silencioso, es normal en servidores
+    }
+  }
 });

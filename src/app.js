@@ -19,8 +19,8 @@ app.use('/api/usuario', usuarioRoutes);
 const referidosRoutes = require('./routes/referidos');
 app.use('/api/referidos', referidosRoutes);
 
-const mercadopagoRoutes = require('./routes/mercadopago');
-app.use('/api/mercadopago', mercadopagoRoutes);
+const mercadopagoRoutes = require('./routes/mercadopago');  // ← Falta esta línea
+app.use('/api', mercadopagoRoutes);  // ← Usa una variable que no existe aún
 
 // RUTAS ADICIONALES AÑADIDAS:
 const planesRoutes = require('./routes/planes');

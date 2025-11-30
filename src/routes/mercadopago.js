@@ -9,7 +9,26 @@ const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN || "APP_USR-1315440257893813-111718-d53d8f333c89be664e70aff113efa239-2997968741",
 });
 
-// === COMISIONES MULTINIVEL ===
+// === URLs DINÁMICAS PARA LOCALHOST Y PRODUCCIÓN ===
+const getBaseURL = () => {
+  // En producción (Hostinger) usa el dominio real
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://financial360.online';
+  }
+  // En desarrollo usa localhost
+  return 'http://localhost:3000';
+};
+
+const getBackendURL = () => {
+  // En producción (Hostinger) usa el mismo dominio para el webhook
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://financial360.online/api';
+  }
+  // En desarrollo usa localhost:3001
+  return 'http://localhost:3001/api';
+};
+
+// === COMISIONES MULTINIVEL (igual que antes) ===
 async function procesarComisionesMultinivel(usuarioId, planId, paymentId, referidorDirecto = null) {
   try {
     const [plan] = await db.query("SELECT precio, nombre FROM planes WHERE id = ?", [planId]);
@@ -59,7 +78,7 @@ async function procesarComisionesMultinivel(usuarioId, planId, paymentId, referi
   }
 }
 
-// === CREAR PREFERENCIA (FUNCIONA EN LOCALHOST SIN ERROR) ===
+// === CREAR PREFERENCIA (AHORA FUNCIONA EN PRODUCCIÓN) ===
 router.post("/crear-preferencia", async (req, res) => {
   try {
     const { planId, userId, userEmail, userName, ref } = req.body;
@@ -70,6 +89,8 @@ router.post("/crear-preferencia", async (req, res) => {
     if (planes.length === 0) return res.status(404).json({ success: false, message: "Plan no encontrado" });
 
     const plan = planes[0];
+    const baseURL = getBaseURL();
+    const backendURL = getBackendURL();
 
     const preference = new Preference(client);
     const result = await preference.create({
@@ -92,14 +113,16 @@ router.post("/crear-preferencia", async (req, res) => {
           ref: ref || null,
           timestamp: new Date().toISOString(),
         }),
-        // SOLUCIÓN: back_urls con query params + SIN auto_return en localhost
+        // ✅ URLs DINÁMICAS que funcionan en ambos entornos
         back_urls: {
-          success: "http://localhost:3000/gracias?payment=success",
-          failure: "http://localhost:3000/gracias?payment=failure",
-          pending: "http://localhost:3000/gracias?payment=pending",
+          success: `${baseURL}/gracias?payment=success`,
+          failure: `${baseURL}/gracias?payment=failure`, 
+          pending: `${baseURL}/gracias?payment=pending`,
         },
-        // auto_return: "approved",  ← COMENTADO EN LOCALHOST (causa error)
-        notification_url: "http://localhost:3001/api/mercadopago/webhook",
+        // ✅ Auto_return solo en producción
+        auto_return: process.env.NODE_ENV === 'production' ? "approved" : undefined,
+        // ✅ Webhook dinámico
+        notification_url: `${backendURL}/mercadopago/webhook`,
       },
     });
 
@@ -110,7 +133,7 @@ router.post("/crear-preferencia", async (req, res) => {
   }
 });
 
-// === WEBHOOK ===
+// === WEBHOOK (igual que antes) ===
 router.post("/webhook", async (req, res) => {
   try {
     if (req.body.type === "payment") {
@@ -157,7 +180,7 @@ router.post("/webhook", async (req, res) => {
   }
 });
 
-// === OBTENER PLANES ===
+// === OBTENER PLANES (igual que antes) ===
 router.get("/planes", async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM planes WHERE activo = 1 ORDER BY precio ASC");
